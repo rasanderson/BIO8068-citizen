@@ -1,0 +1,39 @@
+---
+title: "Introduction to citizen science data in ecology"
+subtitle: "BIO8068 Data visualisation in Ecology"
+output:
+  word_document:
+    reference_docx: word_template.docx
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+Citizen science data is collected by volunteers, often members of the general public, that want to be engaged in aiding scientific research. Whilst the term "citizen science" is a relatively recent one, engagement with the public in the collection of scientific data has actually been going on for decades. Good examples in the UK include:
+
+* British Trust for Ornithology (BTO) Breeding Bird Survey (BBS). This was launched in 1994 and involves counts of of breeding birds in randomly located 1 km grid squares within the Ordnance Survey National Grid. It uses a standardised methodology to count the birds, beween April and June each year, with volunteers sending their results to the BTO. <https://www.bto.org/our-science/projects/bbs>
+* UK Butterfly Monitoring Conservation Scheme (UKBMS) This originated from the Butterfly Conservation Society surveys since 1976 and uses both fixed-transect walks, as well as wider surveys (based on the same squares as the BBS), in collaboration with the Centre for Ecology and Hydrology (CEH) <https://www.ceh.ac.uk/our-science/projects/uk-butterfly-monitoring-scheme> and <https://www.ukbms.org/>
+* Botanical Society of the British Isles (BSBI) has created the Atlas of the British Flora (which also covers Ireland) since 1962, and has records from over 100 years ago. It's main atlas is published as a book, but it also has electronic records with regular annual surveys from volunteers <https://bsbi.org/atlas-2020>
+* Taxon-specific Recording Schemes. There are large numbers of recording schemes for particular taxa, that often require specialist knowledge to identify. These include Hemiptera Recording Scheme <http://www.britishbugs.org.uk/>, Soldierfly Recording Scheme <https://www.brc.ac.uk/soldierflies-and-allies/> etc.
+* Mammal species in camera traps. The public is being asked to identify species detected in camera traps, including both still and video images. This is coordinated through the MammalWeb, initially set up by Durham University with the Durham Wildlife Trust <https://www.mammalweb.org/en/>
+* Invasive non-native species (INNS) recording. It is often essential to detect these species at an early stage, either to control them, or better understand their rate of spread. Good examples include the horse chestnut leaf miner <http://www.conkertreescience.org.uk/> and cellar slug survey <https://rhs.org.uk/slugsurvey> both of which are linked to Newcastle University
+
+# Advantages and disadvantages of ecological citizen science data
+Citizen science data provides an opportunity to collect large amounts of data, over wide geographical areas, using repeated sampling over many years. This gives the potential for good, long-term spatio-temporal ecological datasets for subsequent visualisation and analysis. In addition to engaging positively with the general public, it provides far more "eyes on the ground" to detect what is happening. The main problems are that for some taxa good training of volunteers may be required to ensure that data of sufficient quality are returned. Unless schemes used transect or stratified randomised surves, such as the BBS or UKBMS, there is a common problem that the datasets are **presence-only**. In other words, they record the presence of a species, but not its absence. Conventional statistical analyses, such as logistic regression (GLM with binomial errors) cannot be used with presence-only data, as there are no zeros, so alternative methods are needed. Another problem is biases in where (and when) records are collected. For example, more records are typically reported near suburban fringe areas, where the public can easily access the countryside, or nature reserves, where they may have made a special visit, than in the wider landscape, biasing the datasets. See the Canvas website for additional resources published by CEH on planning and implementing environmental citizen science projects.
+
+# How are the data stored and accessed?
+In the past all citizen science data were recorded on paper, but they can now be submitted electronically, opening up opportunities for photographic, video and audio records too. Entry can be via desktop-based websites, but increasingly mobile phone apps are also being developed to ease upload of records. The iRecord app is a good example of the latter <https://irecord.org.uk/app/> After records have been uploaded, some schemes undertake minimal data quality checks (e.g. are there geographic coordinates with a record?), others more thorough (e.g. are the geographic records of a terrestrial species given in the sea?), whilst others undertake a more thorough 'verificaction' (e.g. a taxonomic expert will look at a submitted photograph to confirm that the species identification made by the member of the public is correct). You should be aware of these differences in data quality when downloading and accessing data.
+
+Many of the citizen science and recording schemes outlined above have their own websites where you can download previous data. You usually have to register before you can download records. Good websites include
+
+* iRecord. This is run by the Biological Records Centre and provides access to numerous different recording schemes <https://www.brc.ac.uk/irecord/>
+* iNaturalist. This is very similar to iRecord, but is international <https://www.inaturalist.org/> and like iRecord also has a phone app.
+* National Biodiversity Network (NBN) <https://nbn.org.uk/> This coordinates a large number of UK-based schemes, with sub-sections for Scotland, Wales and Northern Ireland. It also provides the NBN Atlas for viewing records and downloads <https://nbnatlas.org/> which has been extensively re-structured in the last 18 months to conform to international standards, originally defined by Atlas of Living Australia (ALA)
+* Global Biodiversity Information Facility (GBIF) This is the main international website, and many nationally-based schemes feed into it. For example some records (about 50%) from NBN have been transferred to GBIF, whilst iNaturalist records are also transferred. Hopefully in future this will provide a single, international repository for the bulk of citizen science data. It also uses the ALA format. <https://www.gbif.org/>
+
+## Aims of this practical
+The main aims are to familiarise you with downloading ecological data from some of the main citizen science repositories, learn how to clean and visualise the data, and conduct some simple analyses.

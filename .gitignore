@@ -37,3 +37,7 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+intro_to_citizen_science.docx
+intro_to_citizen_science.html
+intro_to_citizen_science.pdf
