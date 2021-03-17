@@ -263,6 +263,48 @@ Copy and paste this into your browser and you should be able to hear about 10 se
 
 # Citizen science data from National Biodiversity Network
 ## Manual download from NBN Atlas website
+Manual download is somewhat slower to process, and less "reproducible". Go to the NBN Atlas website at <https://nbnatlas.org/>, **login** with your registered username, and in the Search box at the centre of the main screen, search for **Scottish crossbill** or **Loxia scotica**. After a short delay a screen will be displayed with the species name. If you search initially just for **Loxia** then all the species in that genus will be listed. To download the records for an individual species, click on the species name and after about 30 seconds you should see:
+
+![](images/nbn_map.png)
+
+Under the map at the bottom-right there is a button called "View Records". Click on this to display:
+
+![](images/nbn_records.png)
+
+Click on the "Download" button, and choose Zip archive, with "Full Darwin Core" (all the information). Go for CSV as the format (default), select "Education" as the reason for the download, and accept the terms and conditions. The download request will be processed, and when it is read you will receive an email with a link to the original search, and a link to your zip file. Download and unzip the latter; I have unzipped it into a subfolder within my RStudio project called `nbn_records`. **Note**: the name of your CSV file may differ depending on what you named your zip file in the NBN website. You can then import the data into R using the usual `read.csv` function
+
+```{r}
+nbn <- read.csv("nbn_records/nbn_records.csv")
+nbn <- nbn[nbn$identificationVerificationStatus.processed == "Accepted",]
+```
+
+Again, we can look at changes over time in total number of records:
+
+```{r}
+ggplot(nbn, aes(x=year.processed)) +
+  geom_histogram()
+
+records_per_yr <- nbn %>% 
+  group_by(year.processed) %>% 
+  summarise(count_per_year = n())
+
+ggplot(records_per_yr, aes(x = year.processed, y=count_per_year)) +
+  geom_line()
+
+```
+
+Finally, let's create a map of the records, using a similar technique as before, but renaming columns etc. as appropriate, and simplifying the plot as we only have one species:
+
+```{r}
+m <- addProviderTiles(leaflet(),"Esri.WorldImagery") %>% 
+  ## add markers
+  addCircleMarkers(nbn$decimalLongitude.processed, nbn$decimalLatitude.processed,  
+                   radius = 2, fillOpacity = 0.5, opacity = 0.5, col="red") %>% 
+  addLegend(colors = "red", opacity=1, labels="Scottish Crossbill")
+m
+```
+
+If you go onto the **Advanced Search" part of the NBN Atlas website, you will see that it is possible to delineate more precisely what you want, search for multiple species, etc.
 
 ## Automatic download using `NBN4R` (functionality unreliable)
 ### Install the NBN4R package
