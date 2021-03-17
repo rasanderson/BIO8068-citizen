@@ -11,9 +11,11 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(rgbif)
+library(rinat)
 library(NBN4R)
 library(ggplot2)
 library(dplyr)
+library(lubridate)
 ```
 
 # Introduction
@@ -150,7 +152,114 @@ m
 You can see that the common crossbill _Loxia curvirostra_ is most widespread, whilst the Scottish crossbill _Loxia scotica_ is confined to Scotland (as you would expect!). The other species are rare vagrants. Try modifying your map to display an information popup when you click on a marker.
 
 # Citizen science data from iNaturalist
-Use `rinat` package etc.
+You can import citizen science records directly into R from the iNaturalist website using the `rinat` package; install this using `install.packages("rinat")` and then remember to issue `library(rinat)` before accessing its functions. It operates in a fairly similar manner to the `rgbif` package, although some of the column names etc. of returned objects are slightly different. Let's begin by downloading the crossbill data as before, so that you can directly compare the two approaches.
+
+```{r}
+sx <- get_inat_obs(query = "crossbill")
+
+```
+
+The results are returned as a simple `data.frame` so you can look at columns directly, with only one `$` symbol e.g. `sx$scientific_name`, rather than the two-level `sx$data$scientificName` needed for the `list` results from `rgbif`. By default only 100 results are returned unless we use the `maxresults` option. Remember that this is a **global** dataset, so if we want to restrict it to the UK you need to tell the search engine. Whilst iNaturalist asks users to input the "place" name of a record, each site gets its own `place_id` code. The UK code is **6857** but this assumes that the recorder has setup the hierarchy correctly. Otherwise, you can create a "bounding box" that covers Great Britain and search within that. You can see the differences below:
+
+```{r}
+sx <- get_inat_obs(query = "crossbill", place_id=6857, maxresults=2500)
+nrow(sx)
+
+gb_ll <- readRDS("gb_simple.RDS")
+plot(gb_ll)
+
+sx2 <- get_inat_obs(query = "crossbill", bounds=gb_ll, maxresults=2500)
+nrow(sx2)
+```
+
+Here the results of the two types of query are very similar, but you should be aware of the differences (use `nrow` to compare the number of entries). For now, we'll continue working with the first query, `sx` but you may wish to compare with the second. Data quality can be checked via the `quality_grade` column which distinguished between three types **research**, **casual** and **needs_id**. To ensure we have a good set of data, we will clean the data so that only the research-grade data are used:
+
+```{r}
+sx <- sx[sx$quality_grade == "research",]
+nrow(sx)
+unique(sx$scientific_name)
+```
+
+As before there are a few errors in the scientific names, with one only at genus level, and a goldfinch (_Carduelis carduelis_) and greenfinch (_Chloris chloris_) also returned. This is one of the risks of using common names, and in general it is better to search on Latin binomial names to get the exact species.
+
+```{r}
+sx <- sx[sx$scientific_name != "Loxia", ]
+sx <- sx[sx$scientific_name != "Carduelis carduelis", ]
+sx <- sx[sx$scientific_name != "Chloris chloris", ]
+unique(sx$scientific_name)
+```
+
+You might be surprised at how few records there are from iNaturalist compared to GBIF. This is because iNaturalist is a more recent system, and it is only in the last few years that it has started to become very popular. You can therefore use it to look at current spatial patterns, but it would **not** be wise to use the data to assess long-term changes over time. For the latter GBIF or NBN data would be more useful.
+
+As before, we can plot by date of the record; there is not actually a column that contains the year, and instead the `datetime` column contains the date (year-month-day) and time (24 hour time, UTC). In the UK, during winter Greenwich Mean Time (GMT) is the same as UTC, whilst during British Summer Time (BST) daylight saving changes it to UTC+1. The `datetime` column has been read as a character, so it is easier to manipulate as true dates and times via the `lubridate` library; do `install.packages("lubridate")` and `library(lubridate)` before using it:
+
+```{r}
+summary(sx$datetime) # Note character representation
+# Convert datetime from character into a proper date format
+sx$datetime <- sx$datetime %>%
+  ymd_hms()
+summary(sx$datetime) # Now correctly coded as a date and time
+
+# Use the year() function to create a column with calendar year
+sx <- sx %>% 
+  mutate(year = year(datetime))
+```
+
+
+Now you can use a similar approach as before to look at patterns over time (although note the warnings about the iNaturalist dataset being more recent):
+
+```{r}
+ggplot(sx, aes(x=year)) +
+  geom_histogram()
+
+records_per_yr <- sx %>% 
+  group_by(year) %>% 
+  summarise(count_per_year = n())
+
+ggplot(records_per_yr, aes(x = year, y=count_per_year)) +
+  geom_line()
+
+```
+
+Similarly we can create a map of the iNaturalist citizen science data.  Note now only `sx` and not `sx$data` needed, `scientific_name` rather than `scientificName` and `latitude` rather than `decimalLatitude` etc.
+
+```{r}
+for(i in 1:nrow(sx)){  
+  for(j in 1:length(unique_spp)){
+    if(sx$scientific_name[i] == unique_spp[j]){
+      base_col[i] <- marker_col[j]
+    }
+  }
+}
+
+m <- addProviderTiles(leaflet(),"Esri.WorldImagery") %>% 
+  ## add markers
+  addCircleMarkers(sx$longitude, sx$latitude,  
+                   radius = 2, fillOpacity = 0.5, opacity = 0.5, col=base_col) %>% 
+  addLegend(colors = marker_col, opacity=1, labels=unique_spp)
+m
+```
+
+## Additional information from iNaturalist
+### Photographs
+Have a good look at the information returned from iNaturalist in the `sx` object (and similarly for your GBIF results earlier). As iNaturalist records are commonly collected by mobile phone, you will often have imagery data available. For example, for me the first record contains the following entry for `image_url`. Note that it may differ for you if iNaturalist has updated since I wrote this practical:
+
+```{r}
+sx$image_url[1]
+```
+
+Copy the link from one or more records into your browser to view the photographs. This has the potential to be extremely powerful, as you can bulk-download photographs for species from iNaturalist. These can then be used to train, for example, deep-learning models for species identification, and we will look at some of these techniques later.
+
+![](images/crossbill.jpg)
+
+### Audio
+Have another look at your iNaturalist search results, in the `sound_url` column. These are much rarer, but I have one entry:
+
+```{r}
+sx$sound_url[sx$sound_url != ""] # Look for where it does not equal (!=) a blank
+```
+
+Copy and paste this into your browser and you should be able to hear about 10 seconds of chirping. Again, this type of resource has the potential to be very valuable for deep-learning models which require lots of data that someone else has already 'labelled'. We will look at some methods of basic analysis and visualisation (yes it is possible!) of audio data later.
 
 # Citizen science data from National Biodiversity Network
 ## Manual download from NBN Atlas website
