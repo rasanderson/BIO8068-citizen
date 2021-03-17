@@ -10,7 +10,10 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(rgbif)
 library(NBN4R)
+library(ggplot2)
+library(dplyr)
 ```
 
 # Introduction
@@ -40,67 +43,111 @@ Many of the citizen science and recording schemes outlined above have their own 
 The main aims are to familiarise you with downloading ecological data from some of the main citizen science repositories, learn how to clean and visualise the data, and conduct some simple analyses. We will look at the GBIF and iNaturalist repositories, which have CRAN packages to allow direct download of data into R. We will also explore the NBN Atlas repository, doing manual downloads from their website, to import and visualise in R. There is a development package to directly import data from NBN Atlas into R, but this can be unreliable (inst)
 
 # Using GBIF to access data
-A lot of data flows from NBN into GBIF, and the latter appears to be more robust in terms of direct interfacing with R.
+Whilst you can manually download data from the GBIF website, it is very convenient to be able to automate the whole data processing 'pipeline' within R to make it more reproducible. First, you need to install the `rgbif` package, available as a standard R package from the CRAN repository:
+
+```{r, eval=FALSE}
+install.packages("rgbif")
+library(rgbif)
+```
+
 
 ```{r}
-library(rgbif)
-key <- name_suggest(q = "Estrildidae", rank="family")$data["key"]
+#key <- name_suggest(q = "Caprimulgidae", rank="family")$data["key"] # Nightjar
+key <- name_suggest(q = "Loxia", rank="genus")$data["key"][1,1] # Crossbill
 cntry_code <- isocodes[grep("United Kingdom", isocodes$name), "code"]
 sx <- occ_search(taxonKey = key, country = cntry_code)
+
 # To only return only if geographic coords available
-sx <- occ_search(taxonKey = key, country = cntry_code, hasCoordinate = TRUE)
+sx <- occ_search(taxonKey = key, country = cntry_code, hasCoordinate = TRUE,
+                 eventDate = '1990,2020', limit=2500)
 unique(sx$data$scientificName)
 ```
 
-# Callitriche
+You can see some duplicate scientific names, some appear to lack 'authorities' (Author and year), and one lacks the actual species. We will remove these:
 
 ```{r}
-key <- name_suggest(q = "Callitriche obtusangula", rank="species")$data["key"][1]
-sx <- occ_search(taxonKey = key, country = cntry_code, hasCoordinate = TRUE)
-head(gbif_issues()) # or use View(gbif_issues())
+sx$data <- sx$data[sx$data$scientificName != "Loxia curvirostra curvirostra",]
+sx$data <- sx$data[sx$data$scientificName != "Loxia leucoptera bifasciata (C.L.Brehm, 1827)",]
+sx$data <- sx$data[sx$data$scientificName != "Loxia Linnaeus, 1758",]
+unique(sx$data$scientificName)
 ```
 
-<https://gbif.github.io/gbif-api/apidocs/org/gbif/api/vocabulary/OccurrenceIssue.html>
+Often data can be uploaded with inaccurate or incomplete information; you can see a full list of these via the `gbif_issues()` function which provides the codes, short and long descriptions of typical problems. The current list is always provided at <https://gbif.github.io/gbif-api/apidocs/org/gbif/api/vocabulary/OccurrenceIssue.html>. Some of these are more severe than others:
 
-```{r}
-# Clean up some data
-sx <- sx %>% occ_issues(-bri, -cdiv, -cdout)
+```{r, eval=FALSE}
+problems <- gbif_issues()
+View(problems)
+```
+```{r, echo=FALSE}
+problems <- gbif_issues()
+head(problems)
 ```
 
+Let's clean up the data we have just downloaded, by removing any records where the "basis of the record is invalid" (`bri`), the geographic coordinate is invalid (`cdiv`) or geographic coordinate is out of range (`cdout`), or the taxon match can only be done to a higher rank and not the scientific name (`txmathi`):
 
 ```{r}
-# Plot abundance over different years
+sx <- sx %>% occ_issues(-bri, -cdiv, -cdout, -txmathi) # Pipe syntax
+# sx <- occ_issues(sx, -bri, -cdiv, -cdout, -txmathi) # Standard syntax
+```
+
+Check the searched data and sometimes there will be a slight decline in the number of records. There are still issues with other records; look at `sx$data$issues`, but if you cross-check their codes you can see that they are relatively minor.
+
+## Exploring and visualising the GBIF data
+Let's begin by plotting the changes in records over time, summarised for each year. This will be easiest to do so if you have `tidyverse` packages available, especially `ggplot2` and `dplyr`:
+
+```{r, eval=FALSE}
 library(ggplot2)
 library(dplyr)
+```
+
+```{r}
+ggplot(sx$data, aes(x=year)) +
+  geom_histogram()
 
 records_per_yr <- sx$data %>% 
   group_by(year) %>% 
-  count()
+  summarise(count_per_year = n())
 
-ggplot(records_per_yr, aes(x = year, y=n)) +
+ggplot(records_per_yr, aes(x = year, y=count_per_year)) +
   geom_line()
 
 ```
 
+Try and adapt your queries and plots to show e.g. a bar plot for each year, or mean +/- sd or se. How would you adapt your plot for different species?
+
+## Mapping the data
 
 
-```{r}
-library(leaflet)
-## drop any records with missing lat/lon values
-x$data <- x$data[!is.na(x$data$longitude) & !is.na(x$data$latitude),] 
-
-```
-
-```{r}
+```{r, messages=FALSE}
 library(leaflet)
 library(leafem)
-# Create map
+# Create map 
+# We will use different colour codes for each species
+unique_spp <- unique(sx$data$scientificName) # Unique list of species
+marker_col <- rainbow(length(unique_spp))    # Define set of rainbow colours
+base_col <- rep("red", nrow(sx$data))        # Create a vector with default red
+
+# Next bit less complicated than it looks. We go through each row of your data
+# and compare the sx$data$scientificName with the unique_spp name. If they
+# match we allocate the relevant rainbow colour in marker_col to the base_col
+# vector
+for(i in 1:nrow(sx$data)){
+  for(j in 1:length(unique_spp)){
+    if(sx$data$scientificName[i] == unique_spp[j]){
+      base_col[i] <- marker_col[j]
+    }
+  }
+}
+
 m <- addProviderTiles(leaflet(),"Esri.WorldImagery") %>% 
   ## add markers
   addCircleMarkers(sx$data$decimalLongitude, sx$data$decimalLatitude,  
-                   radius = 2, fillOpacity =.5, opacity = 1) 
+                   radius = 2, fillOpacity = 0.5, opacity = 0.5, col=base_col) %>% 
+  addLegend(colors = marker_col, opacity=1, labels=unique_spp)
 m
 ```
+
+You can see that the common crossbill _Loxia curvirostra_ is most widespread, whilst the Scottish crossbill _Loxia scotica_ is confined to Scotland (as you would expect!). The other species are rare vagrants. Try modifying your map to display an information popup when you click on a marker.
 
 # Citizen science data from iNaturalist
 Use `rinat` package etc.
@@ -166,7 +213,7 @@ tx[]  # List structure in R so need empty square brackets to access the data
 
 You can see there are 37 rows in the returned table of taxonomic information, with an indication of whether you are looking at species or genus data. You can if you wish, plot a taxonomic tree using the `ape` package. Use `install.packages("phytools")` to install it first:
 
-```{r}
+```{r, eval=FALSE}
 library(phytools)
 tx <- tx[tx$rank %in% c("species","subspecies"),] ## restrict to species and subspecies
 
@@ -192,3 +239,9 @@ Quite a lot of output will be displayed on screen. If you receive an error, try 
 
 
 
+```{r, eval=FALSE}
+library(leaflet)
+## drop any records with missing lat/lon values
+x$data <- x$data[!is.na(x$data$longitude) & !is.na(x$data$latitude),] 
+
+```
