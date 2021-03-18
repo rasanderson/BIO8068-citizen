@@ -358,7 +358,7 @@ tx <- taxinfo_download("rk_family:Fringillidae",
 
 You can see there are 37 rows in the returned table of taxonomic information, with an indication of whether you are looking at species or genus data. You can if you wish, plot a taxonomic tree using the `plotTree` from the `phytools` package. Use `install.packages("phytools")` to install it first:
 
-```{r, eval=FALSE}
+```{r}
 library(phytools)
 tx <- tx[tx$rank %in% c("species","subspecies"),] ## restrict to species and subspecies
 
@@ -366,7 +366,7 @@ tx <- tx[tx$rank %in% c("species","subspecies"),] ## restrict to species and sub
 tx$genus <- as.factor(tx$genus)
 tx$scientificName <- as.factor(tx$scientificName)
 
-## create phylo object of Scientific.Name nested within Genus
+## create phylo object of scientific Latin name nested within Genus
 ax <- as.phylo(~genus/scientificName, data=tx)
 plotTree(ax, type="fan", fsize=0.6)
 ```
@@ -416,10 +416,10 @@ nrow(loxia_recs$data)
 unique(loxia_recs$data$scientificName)
 # Remove records only identified to genus Loxia
 loxia_recs$data <- loxia_recs$data[loxia_recs$data$scientificName != "Loxia",]
-# Loxia curvirostra crivirostra is the subspecies for Loxia curvirostra (common
-# crossbill). Generally recorded the same so may be better to merge. Use a
-# conditional search with == inside square brackets to replace subspecies 
-# with species
+# Loxia curvirostra curvirostra is the subspecies for Loxia curvirostra
+# (common crossbill). Generally recorded the same so may be better to merge
+# Use a conditional search with == inside square brackets to replace
+# subspecies with species
 loxia_recs$data$scientificName[loxia_recs$data$scientificName == "Loxia curvirostra curvirostra"] <- "Loxia curvirostra"
 unique(loxia_recs$data$scientificName)
 
@@ -456,3 +456,15 @@ m
 ```
 
 Try modifying the above code, and display all 4 species of crossbill, using different colour codes, using the `loxia_recs` data. See the example from the iNaturalist map earlier. Also try modifying your line plot to display different lines for each species over time.
+
+# Take home messages
+You have seen that there are a wide range of different sources of citizen science data, that is "relatively" easy to download either from within R (the ideal for automatic, reproducible data-processing pipelines), via the citizen science website. We have explored just a small selection today. Key points to note include:
+
+* large amounts of data often available, depending on taxa
+* data quality issues: have identifications been verified etc?
+* inconsistent variable names, even from the same citizen science website if the data is accessed via different methods. For example you have seen: `latitude`, `latitudeWGS84`, `decimalLatitude` and `decimalLatitude.processed` all referring to the same thing.
+* inconsistent R data objects. Sometimes a simple data.frame is returned, so you can use things such as `myrecords$latitude` to access a column. Sometimes a structured list is returned, which may require `myrecords$data$latitude` to access a column
+* inconsistent terms used to measure the "quality" of the records, as to whether they have been verified. e.g. "Research grade" vs "Confirmed" may have different meanings.
+
+# In your own time
+Try downloading some taxa records for species you are particularly interested in. Plot the number of records over time, and produce some interactive `leaflet` maps to visualise the citizen science data. Compare the same taxon between two or more different citizen science websites.
